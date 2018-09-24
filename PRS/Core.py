@@ -1,21 +1,32 @@
-import numpy as np
-import math
 import random
+
+import numpy as np
 from sklearn.neighbors import NearestNeighbors
-#
-# # 节点
-# class node:
-#
-#     name = None
-#     cluster_number = None
-#     value = None
-#     parent = None
-#     children = None
-#
-#     def __init__(self, name, value):
-#         self.name = name
-#         self.children = set()
-#         self.value = value
+
+
+# 节点
+class node:
+    name = -1
+    # cluster_number = None
+    parent = -1
+    children = set()
+
+    def __init__(self, name):
+        self.name = name
+
+
+class tree:
+    root = None
+
+    def __init__(self, root):
+        self.root = root
+
+
+# 原始数据
+# 应该是全局存储的，这样可以拓展到分布式算法中
+
+
+
 
 # 聚合
 def aggregation(data):
