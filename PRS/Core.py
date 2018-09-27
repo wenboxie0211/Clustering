@@ -16,10 +16,20 @@ class node:
 
 
 class tree:
+    """
+    
+    """
     root = None
 
     def __init__(self, root):
         self.root = root
+
+    def traverse(self):
+
+    def get_nodes(self):
+
+    def get_skeleton(self):
+
 
 
 # 原始数据
@@ -29,31 +39,44 @@ class tree:
 
 
 # 聚合
-def aggregation(data):
+def aggregation(leaves: set(node), data: []):
+    """
+    
+    :param leaves: the set of aggregation candidates
+    :param data: global variable
+    :return: the set of roots
+    """
 
-    # 数据
-    # D = np.zeros([len(old_cores)])
-    # for i in range(0,len(D)):
-    #     D[i] = old_cores[i].value
+    # leaves' map & sub_data
+    leaves_map = {};
+    D = []
+    for l, i in leaves, range(len(leaves)):
+        leaves_map[i] = l.name
+        D.append(data[l.name])
 
-    # 邻接矩阵
+    # adjacent matrix
     neigh = NearestNeighbors(n_neighbors=1)
-    neigh.fit(data)
-    A = neigh.kneighbors_graph(data)
+    neigh.fit(D)
+    A = neigh.kneighbors_graph(D)
 
-    # 关系矩阵
+    # relational matrix
     R = A + A.T
 
-    # 确定支撑点
-    sup_nodes = get_supporting_nodes(R)
+    # find supporting nodes
+    sup_nodes = get_supporting_nodes(R, leaves_map)
 
-    # 打标签
+    # confirm the tree structure and give labels
     clusters = get_clusters(R, sup_nodes)
 
     return clusters, R
 
 # 确定支撑点
 def get_supporting_nodes(R):
+    """
+    
+    :param R: 
+    :return: 
+    """
     candidates = set(range(len(R)))
     supporting_nodes = set()
     while len(candidates) > 0:
