@@ -5,6 +5,7 @@ Created on Fri Apr 07 10:14:29 2017
 @author: Administrator
 """
 import networkx as nx
+
 from NG import Index
 
 
@@ -52,7 +53,7 @@ class communityAlg():
                 no = 0
                 for c in communitySet:
                     no += 1
-                print(no, '\t', idx.TriParRatio_nx(nx.connected_components(G1), G))
+                print(no, '\t', current_modularity, '\t', idx.TriParRatio_nx(nx.connected_components(G1), G))
                 # print(current_modularity,';',idx.TriParRatio_nx(nx.connected_components(G1), G),';',idx.conductance_nx(nx.connected_components(G1), G))
 
                 if current_modularity > max_modularity:

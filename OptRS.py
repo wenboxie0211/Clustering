@@ -1,9 +1,9 @@
-from NG import CommunityAlg
 import networkx as nx
+
 from NG import Index
 
 #netsci-379;beach;football; LFR-1000
-dataname = 'football'
+dataname = 'soc-advogato'
 
 G = nx.Graph()
 RS_G = nx.Graph()
@@ -16,10 +16,10 @@ for line in refile:
     comm[a[0]]=a[1]
 refile.close()
 #
-efile = open('/Users/wenboxie/Data/network/'+dataname+'/ectd.csv', 'r')
+efile = open('/Users/wenboxie/Data/network/' + dataname + '/' + dataname + '-network.txt', 'r')
 efile.readline()
 for line in efile:
-    dlist = line.split(',')
+    dlist = line.split(' ')
 
     s = dlist[0]
     t = dlist[1]
@@ -49,7 +49,7 @@ communitySet = nx.connected_components(G1)
 no = 0
 for c in communitySet:
     no += 1
-print(no,'\t', idx.TriParRatio_nx(nx.connected_components(G1), G))
+print(no, '\t', current_modularity, '\t', idx.TriParRatio_nx(nx.connected_components(G1), G))
 
 max_TPR =idx.TriParRatio_nx(nx.connected_components(G1), G)
 
@@ -97,7 +97,7 @@ while len(bw) > 1:
         no = 0
         for c in communitySet:
             no += 1
-        print(no,'\t',current_TPR)
+        print(no, '\t', current_modularity, '\t', current_TPR)
 
     if current_modularity > max_modularity:
         max_modularity = current_modularity
@@ -146,8 +146,7 @@ print('MAX:',no,'\t',max_TPR)
 
 communitySet = nx.connected_components(maxG)
 
-
-dfile = open('/Users/wenboxie/Data/network/'+dataname+'/result-rs           -opt-m.csv', 'w')
+dfile = open('/Users/wenboxie/Data/network/' + dataname + '/result-rs-opt-m.csv', 'w')
 dfile.writelines('Id,rs-opt-m\n')
 cluster_index = 0
 for comp in communitySet:

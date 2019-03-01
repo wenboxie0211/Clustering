@@ -4,16 +4,16 @@ Created on Sat Mar 25 10:19:35 2017
 
 @author: Administrator
 """
-from NG import Index
-from NG import CommunityAlg
 import networkx as nx
+
+from NG import CommunityAlg
 
 
 def readdata(inputpath):
     g = nx.Graph()
     dfile = open(inputpath, 'r')
     for line in dfile:
-        dlist = line.split(',')
+        dlist = line.split(' ')
 
         if dlist[0] == 'Source': continue
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # dataname = 'ucidata-zachary, netsci-379'
 
    #  clusterlabelfile_result = '/Users/wenboxie/Data/network/'+ dataname +'/ectd.'+ dataname +'-NG.csv'
-    name= 'jazz'
-    weightpath = '/Users/wenboxie/Data/network/'+name+'/ectd.csv'
+    name = 'soc-advogato'
+    weightpath = '/Users/wenboxie/Data/network/' + name + '/' + name + '-network.txt'
     clusterlabelfile_result = '/Users/wenboxie/Data/network/'+name+'/result-gn.csv'
     main()

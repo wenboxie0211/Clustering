@@ -1,8 +1,9 @@
 import numpy as np
-from util import estimate
-from scipy.io import arff
 from scipy.spatial import KDTree
 from scipy.spatial import distance
+
+from util import estimate
+
 
 # http://www-users.cs.umn.edu/~han/dmclass/cure.pdf
 
@@ -249,21 +250,44 @@ if __name__ == '__main__':
 
     #{"breast-w", "ecoli", "glass", "ionosphere", "iris", "kdd_synthetic_control", "mfeat-fourier", "mfeat-karhunen","mfeat-zernike"};
     #{"optdigits", "segment", "sonar", "vehicle", "waveform-5000", "letter", "kdd_synthetic_control"};
-    dataset = 'ERA'
-    file_name_data = '/Users/wenboxie/Data/uci-20070111/exp/' + dataset + '(data).txt'
-    file_name_label = '/Users/wenboxie/Data/uci-20070111/exp/' + dataset + '(label).txt'
+    # dataset = 'ERA'
+    # file_name_data = '/Users/wenboxie/Data/uci-20070111/exp/' + dataset + '(data).txt'
+    # file_name_label = '/Users/wenboxie/Data/uci-20070111/exp/' + dataset + '(label).txt'
 
     # Smaller alpha shrinks the scattered points and favors elongated clusters
     # large alph-> scattered points get closer to mean,  cluster tend to be more compact
-    alpha = 0.3
+    # alpha = 0.3
+    #
+    # # number of representatives per cluster
+    # c = 10
+    # data = __load_data(file_name_data)
+    # label = __load_label(file_name_label)
+    # file_results = '/Users/wenboxie/Data/rs-exp/cure/cure-' + dataset + '-ri.txt'
+    # write_results = open(file_results,'w')
+    # for i in range(2,21):
+    #     # number of clusters
+    #     number_of_clusters = i
+    #
+    #     # print('load data and label.')
+    #     pred = cure_clustering(data, number_of_clusters, alpha, c)
+    #
+    #     ri = estimate.rand_index(label, pred)
+    #     print(ri)
+    #     write_results.write(str(ri)+'\n')
 
-    # number of representatives per cluster
+    alpha = 0.3
+    file_name_data = '/Users/wenboxie/Data/ssim_cwssim.csv'
+    file_name_label = '/Users/wenboxie/Data/Olivetti(label).txt'
+    data = np.zeros((400, 400))
+    f = open(file_name_data, 'r')
+    for lin in f.readlines():
+        ns = lin.strip('\n').split(',')
+        data[int(ns[0]) - 1, int(ns[1]) - 1] = data[int(ns[1]) - 1, int(ns[0]) - 1] = float(ns[2])
     c = 10
-    data = __load_data(file_name_data)
     label = __load_label(file_name_label)
-    file_results = '/Users/wenboxie/Data/rs-exp/cure/cure-' + dataset + '-ri.txt'
-    write_results = open(file_results,'w')
-    for i in range(2,21):
+    file_results = '/Users/wenboxie/Data/rs-exp/cure/cure-Olivetti-ri.txt'
+    write_results = open(file_results, 'w')
+    for i in range(2, 50):
         # number of clusters
         number_of_clusters = i
 
@@ -272,5 +296,4 @@ if __name__ == '__main__':
 
         ri = estimate.rand_index(label, pred)
         print(ri)
-        write_results.write(str(ri)+'\n')
-
+        write_results.write(str(ri) + '\n')

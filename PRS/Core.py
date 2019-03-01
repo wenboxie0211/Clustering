@@ -1,34 +1,36 @@
 import random
 
 import numpy as np
+import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 
 
-# 节点
-class node:
-    name = -1
-    # cluster_number = None
-    parent = -1
-    children = set()
-
-    def __init__(self, name):
-        self.name = name
-
-
-class tree:
-    """
-    
-    """
-    root = None
-
-    def __init__(self, root):
-        self.root = root
-
-    def traverse(self):
-
-    def get_nodes(self):
-
-    def get_skeleton(self):
+#
+# # 节点
+# class node:
+#     name = -1
+#     # cluster_number = None
+#     parent = -1
+#     children = set()
+#
+#     def __init__(self, name):
+#         self.name = name
+#
+#
+# class tree:
+#     """
+#
+#     """
+#     root = None
+#
+#     def __init__(self, root):
+#         self.root = root
+#
+#     def traverse(self):
+#
+#     def get_nodes(self):
+#
+#     def get_skeleton(self):
 
 
 
@@ -39,7 +41,7 @@ class tree:
 
 
 # 聚合
-def aggregation(leaves: set(node), data: []):
+def aggregation(data: pd.DataFrame):
     """
     
     :param leaves: the set of aggregation candidates
@@ -47,52 +49,70 @@ def aggregation(leaves: set(node), data: []):
     :return: the set of roots
     """
 
-    # leaves' map & sub_data
-    leaves_map = {};
-    D = []
-    for l, i in leaves, range(len(leaves)):
-        leaves_map[i] = l.name
-        D.append(data[l.name])
+    # # leaves' map & sub_data
+    # leaves_map = {};
+    # D = []
+    # for l, i in leaves, range(len(leaves)):
+    #     leaves_map[i] = l.name
+    #     D.append(data[l.name])
+
+    # disturb the data
+    d = data.values
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            d[i, j] += 0.00001 * random.random()
+    # print(d)
 
     # adjacent matrix
-    neigh = NearestNeighbors(n_neighbors=1)
-    neigh.fit(D)
-    A = neigh.kneighbors_graph(D)
+    neighbors = NearestNeighbors(n_neighbors=2)
+    neighbors.fit(d)
+    A = neighbors.kneighbors_graph(d) - np.eye(len(d))
 
     # relational matrix
     R = A + A.T
-
+    # print(R)
     # find supporting nodes
-    sup_nodes = get_supporting_nodes(R, leaves_map)
-
+    sup_nodes = get_supporting_nodes(R)
+    print(sup_nodes)
     # confirm the tree structure and give labels
-    clusters = get_clusters(R, sup_nodes)
+    clusters_temp = get_clusters(R, sup_nodes)
 
-    return clusters, R
+    # map to the real id
+    index = data._stat_axis.values.tolist()
+    clusters = {}
+    for sup_node in clusters_temp.keys():
+        clusters[index[sup_node]] = set()
+        for node in clusters_temp[sup_node]:
+            clusters[index[sup_node]].add(index[node])
+
+    return clusters
 
 # 确定支撑点
-def get_supporting_nodes(R):
+def get_supporting_nodes(R: np.matrix):
     """
     
     :param R: 
     :return: 
     """
-    candidates = set(range(len(R)))
+    candidates = set(range(R.shape[0]))
     supporting_nodes = set()
     while len(candidates) > 0:
         node_checking = candidates.pop()
-        if max(R[node_checking]) != 2:
-            candidates.remove(node_checking)
+        if R[node_checking].max() != 2:
             continue
         else:
-            start_node = set(node_checking)
-            nns = get_supporting_nodes_checking(R, set(start_node))
+            start__ = set()
+            start__.add(R[node_checking].argmax())
+            nns = get_supporting_nodes_checking(R, start__)
 
-        pro = np.array([len(nns)][2])
-        for n,i in nns,range(len(nns)):
-            candidates.remove(n)
+        # print(nns)
+        pro = np.zeros([len(nns), 2])
+        for n, i in zip(nns, range(len(nns))):
+            if n != node_checking:
+                candidates.remove(n)
+            # print(i)
             pro[i][0] = n
-            pro[i][1] = sum(R[n])
+            pro[i][1] = R[n].sum()
             if i != 0:
                 pro[i][1] += pro[i-1][1]
 
@@ -106,11 +126,14 @@ def get_supporting_nodes(R):
 def get_supporting_nodes_checking(R, nns):
     nns_new = set()
     for node in nns:
-        for n in range(len(R[node])):
-            if R[node][n] == 2 and n not in nns:
-                nns_new.add(n)
+        if R[node].max() == 2:
+            # new_node = set()
+            # new_node.add(R[node].argmax())
+            nns_new.add(R[node].argmax())
+    nns_new = nns_new - nns
     if len(nns_new) != 0:
-        nns.add(get_supporting_nodes_checking(R,nns_new))
+        nns.update(nns_new)
+        nns.update(get_supporting_nodes_checking(R, nns))
 
     return nns
 
@@ -118,7 +141,9 @@ def get_supporting_nodes_checking(R, nns):
 def get_clusters(R, sup_nodes):
     clusters = {}
     for sn in sup_nodes:
-        clusters[sn] = get_community_nodes(R, set(sn))
+        sn_set = set()
+        sn_set.add(sn)
+        clusters[sn] = get_community_nodes(R, sn_set)
     return clusters
 
 # 划分联通分支
@@ -126,10 +151,10 @@ def get_community_nodes(R, nns):
     nns_new = set()
     for node in nns:
         for n in range(len(R[node])):
-            if R[node][n] != 0 and n not in nns:
+            if R[node, n] != 0 and n not in nns:
                 nns_new.add(n)
     if len(nns_new) != 0:
-        nns.add(get_community_nodes(R, nns_new))
+        nns.update(get_community_nodes(R, nns_new))
 
     return nns
 
@@ -139,38 +164,17 @@ def get_eu_dis(a,b):
 
 # 数据划分
 def data_partition(data, **kwargs):
+    d = data.take(np.random.permutation(data.shape[0]))
     sub_data = []
-    data_index = []
     if 'num_sub' in kwargs.keys():
         k = kwargs['num_sub']
     else:
-        k = 1
-    for i in range(0,k):
-        sub_data.append([])
-        data_index.append([])
-    for i in range(0,len(data)):
-        sub_data[i%k].append(data[i])
-        data_index[i%k].append(i)
+        k = 2
 
+    split_threshold = int(d.shape[0] / k)
+    print(split_threshold)
+    for i in range(k - 1):
+        sub_data.append(d.iloc[i * split_threshold:(i + 1) * split_threshold, :])
+    sub_data.append(d.iloc[(k - 1) * split_threshold:, :])
     return sub_data
-
-# # 根节点反馈
-# def supported_nodes_feedback(old_supported_nodes, old_labels):
-#
-#     upper_supported_nodes, upper_labels = aggregation(old_supported_nodes)
-#     label_map = {}
-#     for o_n in old_supported_nodes:
-#         old_labels[old_supported_nodes]
-#
-#
-# # 查询节点的追随者
-# def supported_node_followers(s):
-#     children = s.children
-#     if children is None:
-#         return s
-#     else:
-#         followers = set()
-#         for c in children:
-#             followers.add(supported_node_followers(c))
-#         return followers
 

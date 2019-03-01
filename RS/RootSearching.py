@@ -1,7 +1,8 @@
-import numpy as np
-from util.Node import node
-import random
 import math
+import random
+
+from util.Node import node
+
 
 class node(object):
     #
@@ -161,9 +162,6 @@ def get_roots(sim,nr,alpha):
             ad = math.pow((ab * ab + ac * ac)/2 - (bc * bc)/4, 0.5)
 
             new_sim[out_node][another_r] = new_sim[another_r][out_node] = ad
-
-    out.
-
 
     return new_sim, nr
 
