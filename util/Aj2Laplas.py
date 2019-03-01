@@ -1,10 +1,9 @@
 from numpy import *
-from scipy import sparse
-import pandas
+
 #soc-advogato
-dataname = 'soc-hamsterster'
+dataname = 'soc-advogato'
 # file = open('/Users/wenboxie/Data/network/'+dataname+'/original.' + dataname + '.csv')
-file = open('/Users/wenboxie/Data/network/'+dataname+'/network.txt')
+file = open('/Users/wenboxie/Data/network/' + dataname + '/' + dataname + '-network.txt')
 # file = open('/Users/wenboxie/Data/network/'+dataname+'/network.dat')
 
 #数据映射
@@ -14,6 +13,7 @@ n = 0
 file.readline()
 for line in file.readlines():
     att = line.split(' ')
+    # att = line.split(',')
     s = att[0]
     t = att[1]
     if s not in node_set:
@@ -26,7 +26,7 @@ for line in file.readlines():
         n += 1
 file.close()
 
-file = open('/Users/wenboxie/Data/network/'+dataname+'/network.txt')
+file = open('/Users/wenboxie/Data/network/' + dataname + '/' + dataname + '-network.txt')
 L = zeros((n,n))
 
 file.readline()
@@ -37,8 +37,9 @@ while 1:
         break
 
     att = line.split(' ')
-    s = att[0]
-    t = att[1]
+    # att = line.split(',')
+    s = node_map[att[0]]
+    t = node_map[att[1]]
     # L[int(node[0])-1,int(node[1])-1] = 1
     # L[int(node[1])-1,int(node[0])-1] = 1
     # L[int(float(node[0])),int(float(node[1]))] = -1
@@ -91,20 +92,20 @@ for i in range(0,n):
         if i!=j and L[i,j]==-1:
             if (abs(L_plus[i,j])<1.0e-10):
                 L_plus[i,j]=0
-            # if (L_plus[i,i] + L_plus[j,j] - 2*L_plus[i,j]<0):
-            #     ec[i,j] = 0.0
+            if (L_plus[i, i] + L_plus[j, j] - 2 * L_plus[i, j] < 0):
+                ec[i, j] = 0.0
             else:
-                # try:
-            ec[i,j] = math.pow(VG * (L_plus[i,i] + L_plus[j,j] - 2*L_plus[i,j]), 0.5)
-                # except:
-                #     ec[i,j] = 100000
+                try:
+                    ec[i, j] = math.pow(VG * (L_plus[i, i] + L_plus[j, j] - 2 * L_plus[i, j]), 0.5)
+                except:
+                    ec[i, j] = 100000
             ec[j,i] = ec[i,j]
             # co[i,j] = L_plus[i,j] / math.pow(L_plus[i,i] * L_plus[j,j], 0.5)
             # co[j,i] = co[i,j]
 
 print('Complete!')
 
-out_ectd = open('/Users/wenboxie/Data/network/'+dataname+'/ectd.csv', 'w')
+out_ectd = open('/Users/wenboxie/Data/network/' + dataname + '/' + dataname + '-ectd.csv', 'w')
 # out_co = open('/Users/wenboxie/Data/network/'+dataname+'/cosin.' + dataname+'.csv', 'w')
 # out_lplus = open('/Users/wenboxie/Data/network/'+ dataname +'/lplus.'+dataname+'.csv', 'w')
 out_ectd.write('Source,Target,Weight\n')
