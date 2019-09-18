@@ -1,6 +1,11 @@
+"""
+实验3，尝试做一个确定根结点的方法
+实验4，让结果叠加起来，形成一个带权网络
+
+"""
+import math
 import random
 import threading
-import time
 
 import numpy as np
 import pandas as pd
@@ -39,65 +44,47 @@ class PRS():
         sub_data = self.divide_data_random(num_thread)
         self.results = self.iteraction(sub_data, threshold_clusters)
 
-        # for i in range(2):
+        for i in range(5):
+            sub_data = self.divide_data_results(self.results)
+            self.results = self.iteraction(sub_data, threshold_clusters * 4)
+
         sub_data = self.divide_data_results(self.results)
-        self.results = self.iteraction(sub_data, threshold_clusters / 2)
+        self.results = self.iteraction(sub_data, threshold_clusters)
 
     def iteraction(self, sub_data, threshold_clusters):
-        sub_clusters = []
+        sub_clusters = {}
         # print('length of sub-cluster:', len(sub_data))
+
         thr = [cluster(i, sub_data[i], threshold_clusters, sub_clusters) for i in range(len(sub_data))]
         for t in thr: t.start()
         for t in thr: t.join()
         # print(len(sub_clusters))
-        edges = self.reduce(sub_clusters, threshold_clusters)
+        edges = self.reduce(sub_clusters, threshold_clusters / 2)
         # {parent: set(children)}
-        clustering_tree = {}
-        roots = set()
-        for l in edges:
-            if l[0] == l[1]: roots.add(l[1])
+        # clustering_tree, roots = get_tree(edges)
 
-            if l[1] not in clustering_tree.keys():
-                nc = set()
-                nc.add(l[0])
-                clustering_tree[l[1]] = nc
-            else:
-                nc = clustering_tree[l[1]]
-                nc.add(l[0])
+        # f = open('/Users/wenboxie/Data/PRS_201904/1_edges.csv','w')
+        # f.write('source,target,weight\n')
+        # for key, value in edges.items():
+        #     f.write(str(key)+','+ str(value) + ',' + str(np.linalg.norm([self.data.loc[key,:]-self.data.values[value,:]])) + '\n')
+        #
+        # for r in roots:
+        #     f.write(str(r) + ',999999\n')
+        # f.close()
 
         # {node: label}
-        result = {}
-        for r in roots: result[r] = r
-        # print('roots:',roots)
+        # return get_result(roots, clustering_tree)
+        return edges
 
-        parents_next = roots
-        while len(parents_next) != 0:
-            labels_new = set()
-            for p in parents_next:
-                if p in clustering_tree.keys():
-                    for c in clustering_tree[p]:
-                        result[c] = result[p]
-                        # print(c, '->', labels[p],'(',c,'->
-                        # ,p,')')
-                    labels_new = clustering_tree[p] | labels_new
-            if len(labels_new) > 0:
-                parents_next = labels_new - parents_next
-            else:
-                break
-
-        return result
-
-    def reduce(self, sub_clusters: [], threshold_clusters):
+    def reduce(self, sub_clusters, threshold_clusters):
         data_roots = []
-        results = []
+        results = {}
         # print('sub_clusters:', sub_clusters)
-        while len(sub_clusters) > 0:
-            n = sub_clusters.pop()
-            # n_0 is the child, n_1 is the parent
-            if n[0] == n[1]:
-                data_roots.append(self.data.loc[n[0], :])
+        for c, p in sub_clusters.items():
+            if c == p:
+                data_roots.append(self.data.loc[c, :])
             else:
-                results.append(n)
+                results[c] = p
         # data_root = self.data[sub_clusters[:,0] == sub_clusters[:,0]]
         data_roots = pd.DataFrame(data_roots)
         # print('reduce:',data_roots)
@@ -135,7 +122,7 @@ class cluster(threading.Thread):
         self.sub_clusters = sub_clusters
 
     def run(self):
-        self.sub_clusters = self.sub_clusters.extend(self.aggregate(self.data))
+        self.sub_clusters = self.sub_clusters.update(self.aggregate(self.data))
 
     def aggregate(self, data: pd.DataFrame):
         # 1. disturb the data (to make sure that a cluster tree only has one couple of reciprocal nearest neighbor)
@@ -151,31 +138,152 @@ class cluster(threading.Thread):
         # print("thread-", self.threadID, '3:supporting node:', sup_nodes)
 
         # 4.  对于不是根结点的节点，看作已经确定了邻居，此时就返回其指向，对于根结点就看作没有确定的节点，近一步探索，迭代到下一层。
-        results = [[row_names[i], row_names[A[i].argmax()]] for i in range(A.shape[0]) if row_names[i] not in sup_nodes]
+        # results = [[row_names[i], row_names[A[i].argmax()]] for i in range(A.shape[0]) if row_names[i] not in sup_nodes]
+        edges = {}
+        for i in range(A.shape[0]):
+            if row_names[i] not in sup_nodes:
+                edges[row_names[i]] = row_names[A[i].argmax()]
 
-        # 5. if the number of roots bigger than k, we regard the roots as nodes to aggregate
+        # 5. pruning
+        """
+        这部分可以在后续做一下实验，可否去除，出去以后的影响
+        """
+        edges, sup_nodes = self.pruning(edges, sup_nodes)
+
+        # 6. if the number of roots higher than k, we regard the roots as nodes to aggregate
         if len(sup_nodes) > self.threshold_clusters:
             data_roots = data[data.index.isin(sup_nodes)]
             # print('5:', data_roots)
             # print("thread-", self.threadID, " data_roots: ", data_roots)
-            results.extend(self.aggregate(data_roots))
-        # 6. otherwise, in A, roots direct to;
+            edges.update(self.aggregate(data_roots))
+        # 7. otherwise, in A, roots direct to;
         else:
-            results.extend([[i, i] for i in sup_nodes])
+            for i in sup_nodes: edges[i] = i
+            # print('root:', i)
 
-        return results
+        return edges
+
+    def pruning(self, edges, sup_nodes):
+        tree = get_tree(edges)[0]
+        # print('pruning-sup_node:', sup_nodes)
+        # print('tree', tree)
+        for root in sup_nodes:
+            # 计算高度的阈值
+            h = get_height_th_tree(tree, root)
+            ps = set([root])
+            for i in range(h + 1):
+                ps_new = set()
+                for p in ps:
+                    if len(tree[p]) > 0:
+                        ps_new.union(tree[p])
+                ps = ps_new
+
+            while len(ps) > 0:
+                ps_new = set()
+                for p in ps:
+                    edges[p] = p
+                    sup_nodes.add(p)
+                    if len(tree[p]) > 0:
+                        ps_new.union(tree[p])
+                ps = ps_new
+
+        # print(sup_nodes)
+        return edges, sup_nodes
 
     def get_supporting_nodes(self, R, row_names):
+
+        """
+        这部分是随机的去取
+        """
+        # candidates = set(range(R.shape[0]))
+        # supporting_nodes = set()
+        # for s1 in range(R.shape[0]):
+        #     if R[s1].max() == 2 and s1 in candidates:
+        #         supporting_nodes.add(row_names[s1])
+        #         candidates.remove(R[s1].argmax())
+        #         candidates.remove(s1)
+        #     else:
+        #         continue
+        # return supporting_nodes
+
+        """
+            这部分是有策略的去取
+        """
         candidates = set(range(R.shape[0]))
         supporting_nodes = set()
         for s1 in range(R.shape[0]):
             if R[s1].max() == 2 and s1 in candidates:
-                supporting_nodes.add(row_names[s1])
-                candidates.remove(R[s1].argmax())
+                # s1和s2 都是supporting node
+                s2 = R[s1].argmax()
+
+                # 分析哪一个更适合当作为根结点
+                ## 1.基于度的比较(度大的作为根结点)
+
+                degree_1 = R[s1].sum()
+                degree_2 = R[s2].sum()
+                if degree_1 >= degree_2:
+                    supporting_nodes.add(row_names[s1])
+                else:
+                    supporting_nodes.add(row_names[s2])
+                candidates.remove(s2)
                 candidates.remove(s1)
             else:
                 continue
         return supporting_nodes
+
+
+def get_tree(edges):
+    clustering_tree = {}
+    roots = set()
+    for c, p in edges.items():
+
+        if c == p:
+            # print(c, ':', p)
+            roots.add(p)
+
+        if p not in clustering_tree.keys():
+            nc = set()
+            nc.add(c)
+            clustering_tree[p] = nc
+        else:
+            nc = clustering_tree[p]
+            nc.add(c)
+    # print(roots)
+    return clustering_tree, roots
+
+
+def get_height_th_tree(tree, root):
+    n = 1
+    ps = set([root])
+    while len(ps) > 0:
+        ps_new = set()
+        for p in ps:
+            if len(tree[p]) > 0:
+                ps_new.union(tree[p])
+                n += len(tree[p])
+        ps = ps_new
+    return math.ceil(math.log2(n + 1))
+
+
+def get_result(roots, clustering_tree):
+    result = {}
+    for r in roots: result[r] = r
+    # print('roots:',roots)
+    parents_next = roots
+    while len(parents_next) != 0:
+        labels_new = set()
+        for p in parents_next:
+            if p in clustering_tree.keys():
+                for c in clustering_tree[p]:
+                    result[c] = result[p]
+                    # print(c, '->', labels[p],'(',c,'->
+                    # ,p,')')
+                labels_new = clustering_tree[p] | labels_new
+        if len(labels_new) > 0:
+            parents_next = labels_new - parents_next
+        else:
+            break
+    return result
 
 
 def disturb_data(data):
@@ -225,37 +333,50 @@ def draw_matrix(m):
 if __name__ == '__main__':
     # {"breast-w", "ecoli", "glass", "ionosphere", "iris", "kdd_synthetic_control", "mfeat-fourier", "mfeat-karhunen","mfeat-zernike"};
     # {"optdigits", "segment", "sonar", "vehicle", "waveform-5000", "letter", "kdd_synthetic_control"};
-    file_name = '/Users/wenboxie/Data/uci-20070111/exp/iris.txt'
+    file_name = '/Users/wenboxie/Data/uci-20070111/exp/glass.txt'
     data = pd.read_csv(file_name, header=None).iloc[:, 0:-1]
     label = pd.read_csv(file_name, header=None).iloc[:, -1]
     # print(label)
-    prs = PRS(data)
-    start = time.time()
-    prs.get_clusters(2, 10)
-    # draw_matrix(prs.results)
-    # print(prs.results)
-    r = prs.get_results()
-    # print(r)
-    print('k =', len(set(r.values())))
-    end = time.time()
-    print(end - start)
-    r = np.array(sorted(r.items(), key=lambda item: item[0]))[:, 1]
-    # print(r)
-    print('waite for estimation!')
+    # prs = PRS(data)
+    # start = time.time()
+    # prs.get_clusters(2, 10)
+    # # draw_matrix(prs.results)
+    # # print(prs.results)
+    # r = prs.get_results()
+    # # print(r)
+    # print('k =', len(set(r.values())))
+    # end = time.time()
+    # # print('time:',end-start)
+    # r = np.array(sorted(r.items(),key=lambda  item:item[0]))[:, 1]
+    # # print(r)
+    # print('waite for estimation!')
+    #
+    # ri = metrics.cluster.adjusted_rand_score(label, r)
 
-    ri = metrics.cluster.adjusted_rand_score(label, r)
-    # ri = estimate.rand_index(label, r)
-    print('ri =', ri)
-    start = time.time()
+
+    #############
+
+
+    for i in range(1):
+        prs = PRS(data)
+        prs.get_clusters(4, 10)
+        r = prs.get_results()
+        # print('k =', len(set(r.values())))
+        RS_labels_ = np.array(sorted(r.items(), key=lambda item: item[0]))[:, 1]
+        print('ri_RS(k=', len(set(r.values())), ') =', metrics.cluster.adjusted_rand_score(label, RS_labels_))
+
+        # f = open('/Users/wenboxie/Data/PRS_201904/1_labels.csv', 'w')
+        # f.write('id,label\n')
+        # for i in range(len(label)):
+        #     f.write(str(i)+','+ str(label[i]) + '\n')
+        # f.close()
+
     kmeans_model = cluster_methods.KMeans(n_clusters=3, random_state=1, init='random').fit(data)
     print('ri_kmeans =', metrics.cluster.adjusted_rand_score(label, kmeans_model.labels_))
-    end = time.time()
-    # print(end - start)
-    start = time.time()
+
     agg_model = cluster_methods.AgglomerativeClustering(n_clusters=3).fit(data)
     print('ri_GA =', metrics.cluster.adjusted_rand_score(label, agg_model.labels_))
 
-    end = time.time()
     # print(end - start)
 
     # 按行重排列

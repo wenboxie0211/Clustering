@@ -70,93 +70,72 @@ def aggregation(data: pd.DataFrame):
 
     # relational matrix
     R = A + A.T
-    # print(R)
+
     # find supporting nodes
     sup_nodes = get_supporting_nodes(R)
-    print(sup_nodes)
+    # print('supporting node:', sup_nodes)
+
     # confirm the tree structure and give labels
-    clusters_temp = get_clusters(R, sup_nodes)
+    clusters_temp = get_clusters(A, sup_nodes)
 
     # map to the real id
     index = data._stat_axis.values.tolist()
     clusters = {}
     for sup_node in clusters_temp.keys():
-        clusters[index[sup_node]] = set()
-        for node in clusters_temp[sup_node]:
-            clusters[index[sup_node]].add(index[node])
-
+        s1 = index[sup_node[0]]
+        s2 = index[sup_node[1]]
+        sup_node_real = (s1, s2)
+        clusters[sup_node_real] = {}
+        for node in clusters_temp[sup_node].keys():
+            c_real = index[node]
+            p_real = index[clusters_temp[sup_node][node]]
+            clusters[sup_node_real][c_real] = p_real
     return clusters
 
 # 确定支撑点
 def get_supporting_nodes(R: np.matrix):
-    """
-    
+    """   
     :param R: 
     :return: 
     """
     candidates = set(range(R.shape[0]))
     supporting_nodes = set()
-    while len(candidates) > 0:
-        node_checking = candidates.pop()
-        if R[node_checking].max() != 2:
-            continue
+
+    for s1 in range(R.shape[0]):
+        if R[s1].max() == 2 and s1 in candidates:
+            s2 = R[s1].argmax()
+            # sup_node = (s1, s2)
+            sup_node = s1
+            supporting_nodes.add(sup_node)
+            candidates.remove(s1)
+            candidates.remove(s2)
         else:
-            start__ = set()
-            start__.add(R[node_checking].argmax())
-            nns = get_supporting_nodes_checking(R, start__)
-
-        # print(nns)
-        pro = np.zeros([len(nns), 2])
-        for n, i in zip(nns, range(len(nns))):
-            if n != node_checking:
-                candidates.remove(n)
-            # print(i)
-            pro[i][0] = n
-            pro[i][1] = R[n].sum()
-            if i != 0:
-                pro[i][1] += pro[i-1][1]
-
-        r = random.randint(0,pro[-1][1])
-        for i in range(len(pro)):
-            if r <= pro[i][1]:
-                supporting_nodes.add(i)
+            continue
     return supporting_nodes
 
-# 得到待选支撑点所构成的联通分支
-def get_supporting_nodes_checking(R, nns):
-    nns_new = set()
-    for node in nns:
-        if R[node].max() == 2:
-            # new_node = set()
-            # new_node.add(R[node].argmax())
-            nns_new.add(R[node].argmax())
-    nns_new = nns_new - nns
-    if len(nns_new) != 0:
-        nns.update(nns_new)
-        nns.update(get_supporting_nodes_checking(R, nns))
 
-    return nns
+def get_clusters(A, supporting_nodes):
+    cluster = {}
+    for sup_node in supporting_nodes:
+        # root = create_root(sup_node) # there must be many function to create root #
+        cluster[sup_node] = detect_communities(A, sup_node)
+    return cluster
 
-# 根据支撑点确定簇内节点
-def get_clusters(R, sup_nodes):
-    clusters = {}
-    for sn in sup_nodes:
-        sn_set = set()
-        sn_set.add(sn)
-        clusters[sn] = get_community_nodes(R, sn_set)
-    return clusters
 
-# 划分联通分支
-def get_community_nodes(R, nns):
-    nns_new = set()
-    for node in nns:
-        for n in range(len(R[node])):
-            if R[node, n] != 0 and n not in nns:
-                nns_new.add(n)
-    if len(nns_new) != 0:
-        nns.update(get_community_nodes(R, nns_new))
+def create_root(sup_node):
+    return sup_node
 
-    return nns
+
+def detect_communities(A: np.matrix, parents):
+    children = {}
+    for p in parents:
+        for c in range(A.shape[0]):
+            if A[c, p] == 1:
+                children[c] = p
+    parents_next = children.keys() - parents
+    if len(parents_next) != 0:
+        children.update(detect_communities(A, parents_next))
+    return children
 
 # 欧式距离
 def get_eu_dis(a,b):
@@ -172,7 +151,7 @@ def data_partition(data, **kwargs):
         k = 2
 
     split_threshold = int(d.shape[0] / k)
-    print(split_threshold)
+    # print(split_threshold)
     for i in range(k - 1):
         sub_data.append(d.iloc[i * split_threshold:(i + 1) * split_threshold, :])
     sub_data.append(d.iloc[(k - 1) * split_threshold:, :])
