@@ -481,3 +481,5 @@ if __name__ == '__main__':
                 str(len(set(r.values()))) + '\t' + str(metrics.cluster.adjusted_rand_score(label, RS_labels_)) + '\n')
 
     f.close()
+
+    print('x')
